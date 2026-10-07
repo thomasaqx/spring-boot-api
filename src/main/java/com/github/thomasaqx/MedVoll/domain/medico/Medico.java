@@ -21,6 +21,7 @@ public class Medico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nome;
+    private String telefone;
     private String email;
     private String crm;
 
@@ -33,6 +34,7 @@ public class Medico {
     public Medico(DadosCadastroMedico dados) {
         this.nome = dados.nome();
         this.email = dados.email();
+        this.telefone = dados.telefone();
         this.crm = dados.crm();
         this.especialidade = dados.especialidade();
         //cria um novo objeto do tipo Endereco que chama o contrutor que espera o molde de enderços contido em dados.

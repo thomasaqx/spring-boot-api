@@ -9,6 +9,4 @@ public class MedVollApplication {
 		SpringApplication.run(MedVollApplication.class, args);
 	}
 
-
-
 }

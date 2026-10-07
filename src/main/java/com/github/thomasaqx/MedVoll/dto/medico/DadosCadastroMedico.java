@@ -1,11 +1,7 @@
 package com.github.thomasaqx.MedVoll.dto.medico;
 
-
 import com.github.thomasaqx.MedVoll.domain.medico.Especialidade;
 import com.github.thomasaqx.MedVoll.dto.endereco.DadosEndereco;
-
-
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -18,6 +14,8 @@ public record DadosCadastroMedico(
         @NotBlank
         @Email
         String email,
+        @NotBlank
+        String telefone,
         @NotBlank
         @Pattern(regexp = "\\d{4,6}")
         String crm,
