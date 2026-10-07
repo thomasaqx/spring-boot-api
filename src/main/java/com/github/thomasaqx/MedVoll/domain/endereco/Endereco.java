@@ -1,6 +1,6 @@
 package com.github.thomasaqx.MedVoll.domain.endereco;
 
-import com.github.thomasaqx.MedVoll.dto.endereco.DadosEndereco;
+import com.github.thomasaqx.MedVoll.dto.endereco.DTOEndereco;
 import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,7 +23,7 @@ public class Endereco {
     //Cria um objeto dados do tipo DadosEndereço,
     // onde o objeto dados possui os mesmos atributos,
     // que serão posteriormente escritos na requisição.
-    public Endereco(DadosEndereco dados) {
+    public Endereco(DTOEndereco dados) {
         this.logradouro = dados.logradouro();
         this.bairro = dados.bairro();
         this.cep = dados.cep();
@@ -31,5 +31,29 @@ public class Endereco {
         this.complemento = dados.complemento();
         this.uf = dados.uf();
         this.cidade = dados.cidade();
+    }
+
+    public void atualizarInfoEndereco(DTOEndereco data){
+        if (data.logradouro() != null) {
+            this.logradouro = data.logradouro();
+        }
+        if (data.bairro() != null) {
+            this.bairro = data.bairro();
+        }
+        if (data.cep() != null) {
+            this.cep = data.cep();
+        }
+        if (data.uf() != null) {
+            this.uf = data.uf();
+        }
+        if (data.cidade() != null) {
+            this.cidade = data.cidade();
+        }
+        if (data.numero() != null) {
+            this.numero = data.numero();
+        }
+        if (data.complemento() != null) {
+            this.complemento = data.complemento();
+        }
     }
 }

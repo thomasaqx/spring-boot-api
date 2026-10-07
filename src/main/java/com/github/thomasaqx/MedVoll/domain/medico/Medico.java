@@ -1,7 +1,8 @@
 package com.github.thomasaqx.MedVoll.domain.medico;
 
 import com.github.thomasaqx.MedVoll.domain.endereco.Endereco;
-import com.github.thomasaqx.MedVoll.dto.medico.DadosCadastroMedico;
+import com.github.thomasaqx.MedVoll.dto.medico.DTOAtualizacaoMedico;
+import com.github.thomasaqx.MedVoll.dto.medico.DTOCadastroMedico;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -31,13 +32,26 @@ public class Medico {
     @Embedded
     private Endereco endereco;
 
-    public Medico(DadosCadastroMedico dados) {
-        this.nome = dados.nome();
-        this.email = dados.email();
-        this.telefone = dados.telefone();
-        this.crm = dados.crm();
-        this.especialidade = dados.especialidade();
-        //cria um novo objeto do tipo Endereco que chama o contrutor que espera o molde de enderços contido em dados.
-        this.endereco = new Endereco(dados.endereco());
+    public Medico(DTOCadastroMedico data) {
+        this.nome = data.nome();
+        this.email = data.email();
+        this.telefone = data.telefone();
+        this.crm = data.crm();
+        this.especialidade = data.especialidade();
+        //cria um novo objeto do tipo Endereco que chama o contrutor que espera o molde de enderços contido em data.
+        this.endereco = new Endereco(data.endereco());
+    }
+
+    public void atualizarInfo(DTOAtualizacaoMedico data){
+        if(data.nome() != null){
+            this.nome = data.nome();
+        }
+        if(data.telefone() != null){
+            this.telefone = data.telefone();
+        }
+        if(data.endereco() != null){
+            this.endereco.atualizarInfoEndereco(data.endereco());
+        }
+
     }
 }
