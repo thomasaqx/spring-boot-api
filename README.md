@@ -44,6 +44,20 @@ Com Docker:
 docker run -d --name mysql-medvoll -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=vollmed_api mysql:8
 ```
 
+Para subir o mesmo container: 
+
+```bash
+docker start mysql-medvoll
+```
+Desligar o container:
+```bash
+docker stop mysql-medvoll
+```
+Inicia-lo automaticamente com o Docker Desktop: 
+```bash
+docker update --restart unless-stopped mysql-medvoll
+```
+
 O banco `vollmed_api` também é criado automaticamente na primeira execução, caso não exista.
 
 ### 2. Configurar credenciais (opcional)
