@@ -1,13 +1,14 @@
 # MedVoll API
 
-API REST para gerenciamento de médicos de uma clínica fictícia (Voll Med), desenvolvida com **Spring Boot** e **MySQL**. Permite cadastrar, listar (com paginação), atualizar e inativar médicos.
+API REST para gerenciamento de médicos de uma clínica fictícia (Voll Med), desenvolvida com **Spring Boot** e **MySQL**. Permite cadastrar, listar (com paginação), detalhar, atualizar e inativar médicos, com autenticação de usuários via **JWT**.
 
 ## Tecnologias
 
 - **Java 21**
-- **Spring Boot 4** (Web MVC, Data JPA, Validation, DevTools)
+- **Spring Boot 4** (Web MVC, Data JPA, Validation, Security, DevTools)
 - **MySQL 8**
 - **Flyway** — versionamento do banco de dados via migrations
+- **Spring Security** + **java-jwt (auth0)** — autenticação stateless com token JWT
 - **Lombok** — redução de código boilerplate nas entidades
 - **Maven** (com Maven Wrapper)
 
@@ -15,17 +16,24 @@ API REST para gerenciamento de médicos de uma clínica fictícia (Voll Med), de
 
 ```
 src/main/java/com/github/thomasaqx/MedVoll
-├── controller        → endpoints REST (MedicoController)
+├── controller        → endpoints REST (MedicoController, AuthController)
 ├── domain            → entidades JPA e regras de negócio
 │   ├── medico        → Medico, Especialidade
-│   └── endereco      → Endereco (embutido em Medico)
+│   ├── endereco      → Endereco (embutido em Medico)
+│   └── usuario       → Usuario (implementa UserDetails)
 ├── dto               → objetos de entrada/saída da API (records)
-│   ├── medico        → DTOCadastroMedico, DTOAtualizacaoMedico, DTOListagemMedico
-│   └── endereco      → DTOEndereco
-└── repository        → acesso ao banco (MedicoRepository)
+│   ├── medico        → DTOCadastroMedico, DTOAtualizacaoMedico, DTOListagemMedico, DTODetalhamentoMedico
+│   ├── endereco      → DTOEndereco
+│   ├── usuario       → DTOUsuario
+│   └── auth          → DTOAuth, DTOTokenJWT
+├── interfaces        → repositórios Spring Data (MedicoInterface, UsuarioInterface)
+├── service           → AuthService (carrega o usuário), TokenService (gera o JWT)
+└── Infra
+    ├── exception     → TratamentoDeErros (respostas padronizadas de erro)
+    └── security      → SecurityConfigurations, SecurityFilter
 
 src/main/resources
-├── application.yaml  → configurações da aplicação e do banco
+├── application.yaml  → configurações da aplicação, do banco e do JWT
 └── db/migration      → migrations do Flyway (V1, V2, ...)
 ```
 
@@ -38,22 +46,29 @@ src/main/resources
 
 ### 1. Subir o banco de dados
 
-Com Docker:
+Com Docker, **na primeira vez** (cria o container):
 
 ```bash
 docker run -d --name mysql-medvoll -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=vollmed_api mysql:8
 ```
 
-O banco `vollmed_api` também é criado automaticamente na primeira execução, caso não exista.
+**Nas próximas vezes**, o container já existe — basta iniciá-lo (rodar o `docker run` de novo dá erro de nome em uso):
 
-### 2. Configurar credenciais (opcional)
+```bash
+docker start mysql-medvoll
+```
 
-Por padrão a aplicação usa usuário `root` e senha `root`. Para usar outras credenciais, defina as variáveis de ambiente:
+O banco `vollmed_api` também é criado automaticamente na primeira execução da aplicação, caso não exista.
 
-| Variável      | Padrão |
-|---------------|--------|
-| `DB_USERNAME` | `root` |
-| `DB_PASSWORD` | `root` |
+### 2. Configurar variáveis de ambiente (opcional)
+
+| Variável      | Padrão     | Descrição                                   |
+|---------------|------------|---------------------------------------------|
+| `DB_USERNAME` | `root`     | Usuário do MySQL                            |
+| `DB_PASSWORD` | `root`     | Senha do MySQL                              |
+| `JWT_SECRET`  | `12345678` | Chave usada para assinar os tokens JWT      |
+
+> O valor padrão de `JWT_SECRET` serve apenas para desenvolvimento. Em qualquer outro ambiente, defina uma chave longa e aleatória (32+ caracteres).
 
 ### 3. Rodar a aplicação
 
@@ -63,18 +78,54 @@ Por padrão a aplicação usa usuário `root` e senha `root`. Para usar outras c
 
 A API ficará disponível em `http://localhost:8080`. As tabelas são criadas automaticamente pelo Flyway ao iniciar.
 
-## Endpoints
+### 4. Criar um usuário para login
 
-Base: `http://localhost:8080/medicos`
+As senhas são armazenadas como hash **BCrypt** (nunca em texto puro). Exemplo de usuário com a senha `123456`:
+
+```sql
+INSERT INTO usuarios (login, senha) VALUES ('admin@voll.med', '$2a$10$.RUHIFVDU9EPR5IApGRI6.q6o/9yCZhUF5hdYRVNZWiKTCqaLLSse');
+```
+
+## Endpoints
 
 | Método   | Rota            | Descrição                                       |
 |----------|-----------------|-------------------------------------------------|
+| `POST`   | `/login`        | Autentica o usuário e devolve um token JWT      |
 | `POST`   | `/medicos`      | Cadastra um novo médico                         |
 | `GET`    | `/medicos`      | Lista médicos ativos (paginado)                 |
+| `GET`    | `/medicos/{id}` | Detalha um médico                               |
 | `PUT`    | `/medicos`      | Atualiza nome, telefone e/ou endereço           |
 | `DELETE` | `/medicos/{id}` | Inativa um médico (exclusão lógica)             |
 
 Todas as requisições com corpo devem enviar o header `Content-Type: application/json`.
+
+---
+
+### POST — Login
+
+**Requisição**
+
+```http
+POST http://localhost:8080/login
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "admin@voll.med",
+  "senha": "123456"
+}
+```
+
+**Resposta:** `200 OK`
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+O token expira em **2 horas**. Login ou senha inválidos retornam `401 Unauthorized`; campos em branco retornam `400 Bad Request`.
 
 ---
 
@@ -106,7 +157,26 @@ Content-Type: application/json
 }
 ```
 
-**Resposta:** `200 OK` (sem corpo)
+**Resposta:** `201 Created`, com o header `Location: http://localhost:8080/medicos/{id}` e o médico criado no corpo:
+
+```json
+{
+  "id": 8,
+  "nome": "michael jackson",
+  "email": "michael.jack@voll.med",
+  "crm": "132233",
+  "especialidade": "ORTOPEDIA",
+  "endereco": {
+    "logradouro": "rua 1",
+    "bairro": "bairro",
+    "cep": "12345678",
+    "numero": "1",
+    "complemento": "complemento",
+    "uf": "DF",
+    "cidade": "Brasilia"
+  }
+}
+```
 
 **Validações**
 
@@ -121,7 +191,14 @@ Content-Type: application/json
 | `endereco.cep`         | obrigatório, 8 dígitos (somente números)                           |
 | demais campos de `endereco` | obrigatórios                                                  |
 
-Se alguma validação falhar, a API responde `400 Bad Request`.
+Se alguma validação falhar, a API responde `400 Bad Request` listando só os campos inválidos:
+
+```json
+[
+  { "campo": "crm", "mensagem": "deve corresponder a \"\\d{4,6}\"" },
+  { "campo": "email", "mensagem": "deve ser um endereço de e-mail bem formado" }
+]
+```
 
 ---
 
@@ -146,13 +223,6 @@ GET http://localhost:8080/medicos
       "email": "michael.jack@voll.med",
       "crm": "132233",
       "especialidade": "ORTOPEDIA"
-    },
-    {
-      "id": 4,
-      "nome": "Rodrigo Ferreira Santos",
-      "email": "rodrigo.ferreira@voll.med",
-      "crm": "123456",
-      "especialidade": "ORTOPEDIA"
     }
   ],
   "pageable": {
@@ -163,13 +233,13 @@ GET http://localhost:8080/medicos
     "paged": true,
     "unpaged": false
   },
-  "totalElements": 2,
+  "totalElements": 1,
   "totalPages": 1,
   "last": true,
   "first": true,
   "size": 10,
   "number": 0,
-  "numberOfElements": 2,
+  "numberOfElements": 1,
   "empty": false
 }
 ```
@@ -191,6 +261,20 @@ GET http://localhost:8080/medicos?size=5&page=1
 ```http
 GET http://localhost:8080/medicos?sort=crm,desc
 ```
+
+---
+
+### GET — Detalhar médico
+
+O `id` vai na URL.
+
+**Requisição**
+
+```http
+GET http://localhost:8080/medicos/8
+```
+
+**Resposta:** `200 OK`, com os dados completos do médico (mesmo formato da resposta do cadastro). Um `id` inexistente retorna `404 Not Found`.
 
 ---
 
@@ -231,7 +315,7 @@ Content-Type: application/json
 }
 ```
 
-**Resposta:** `200 OK` (sem corpo)
+**Resposta:** `200 OK`, com os dados completos do médico já atualizados.
 
 > `email`, `crm` e `especialidade` não são alterados pelo PUT.
 
@@ -247,7 +331,7 @@ O `id` vai **na URL** (não no corpo). O registro não é apagado do banco: o m�
 DELETE http://localhost:8080/medicos/8
 ```
 
-**Resposta:** `200 OK` (sem corpo)
+**Resposta:** `204 No Content`
 
 > Enviar `DELETE http://localhost:8080/medicos` sem o id resulta em `405 Method Not Allowed`.
 
@@ -257,12 +341,14 @@ DELETE http://localhost:8080/medicos/8
 
 O schema é versionado com **Flyway** em `src/main/resources/db/migration`:
 
-| Migration | Descrição                                   |
-|-----------|---------------------------------------------|
-| V1        | Cria a tabela `medicos`                     |
-| V2        | Adiciona a coluna `telefone`                |
-| V3        | Adiciona a coluna `ativo`                   |
-| V4        | Ajusta o tipo da coluna `ativo` para `BIT`  |
+| Migration | Descrição                                       |
+|-----------|-------------------------------------------------|
+| V1        | Cria a tabela `medicos`                         |
+| V2        | Adiciona a coluna `telefone`                    |
+| V3        | Adiciona a coluna `ativo`                       |
+| V4        | Ajusta o tipo da coluna `ativo` para `BIT`      |
+| V5        | Cria a tabela `usuarios`                        |
+| V6        | Renomeia a coluna `nome` de `usuarios` para `login` |
 
 Convenções importantes:
 - O nome do arquivo deve seguir o padrão `V<número>__<descrição>.sql` (**V maiúsculo** e **dois underscores**)

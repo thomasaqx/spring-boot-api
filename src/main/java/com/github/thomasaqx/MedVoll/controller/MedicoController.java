@@ -5,7 +5,7 @@ import com.github.thomasaqx.MedVoll.dto.medico.DTOCadastroMedico;
 import com.github.thomasaqx.MedVoll.domain.medico.Medico;
 import com.github.thomasaqx.MedVoll.dto.medico.DTODetalhamentoMedico;
 import com.github.thomasaqx.MedVoll.dto.medico.DTOListagemMedico;
-import com.github.thomasaqx.MedVoll.interfaces.MedicoRepository;
+import com.github.thomasaqx.MedVoll.interfaces.MedicoInterface;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,7 +21,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Transactional
 public class MedicoController {
     @Autowired
-    private MedicoRepository repository;
+    private MedicoInterface repository;
 
     @PostMapping
     public ResponseEntity cadastrar(@RequestBody @Valid DTOCadastroMedico data, UriComponentsBuilder uriBuilder) {
